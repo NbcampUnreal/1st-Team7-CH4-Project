@@ -1,6 +1,16 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{48E53AAD-4681-44AD-AFAC-F5B7A7261C18}",
+	"EngineAssociation": "{4AC5C021-4173-4039-96F6-A8B92758AB70}",
 	"Category": "",
-	"Description": ""
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "TheSeven",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	]
 }
