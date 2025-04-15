@@ -1,0 +1,45 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "InkItem.generated.h"
+
+UCLASS()
+class THESEVEN_API AInkItem : public AActor
+{
+	GENERATED_BODY()
+	
+
+public:
+	AInkItem();
+
+protected:
+	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	void OnOverlapBegin(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+public:
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ink Item")
+	float InkEffectDuration = 3.0f;
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ink Item")
+	TSubclassOf<class UUserWidget> InkWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ink Item")
+	class USphereComponent* CollisionSphere;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ink Item")
+	class UStaticMeshComponent* MeshComponent;
+};
