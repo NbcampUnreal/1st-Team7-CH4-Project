@@ -3,9 +3,11 @@
 
 #include "SpeedItem.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 
 ASpeedItem::ASpeedItem()
 {
@@ -23,6 +25,9 @@ ASpeedItem::ASpeedItem()
 
 	SpeedMultiplier = 2.0f;
 	SpeedDuration = 5.0f;
+
+	SpeedEffect = nullptr;
+	SpeedSound = nullptr;
 }
 
 void ASpeedItem::HandleOverlapBegin(
@@ -42,10 +47,30 @@ void ASpeedItem::HandleOverlapBegin(
 	ACharacter* OverlappedCharacter = Cast<ACharacter>(OtherActor);
 	if (OverlappedCharacter != nullptr)
 	{
-		UCharacterMovementComponent* MovementComp = OverlappedCharacter->GetCharacterMovement();
-		if (MovementComp != nullptr)
+		if (UCharacterMovementComponent* MovementComp = OverlappedCharacter->GetCharacterMovement())
 		{
 			MovementComp->MaxWalkSpeed *= SpeedMultiplier;
+		}
+
+		if (SpeedEffect)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				SpeedEffect,
+				OverlappedCharacter->GetActorLocation(),
+				FRotator::ZeroRotator,
+				FVector(1.f),
+				true
+			);
+		}
+
+		if (SpeedSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				SpeedSound,
+				OverlappedCharacter->GetActorLocation()
+			);
 		}
 
 		GetWorldTimerManager().SetTimer(
@@ -64,8 +89,7 @@ void ASpeedItem::RestoreOriginalSpeed(ACharacter* OverlappedCharacter)
 {
 	if (OverlappedCharacter != nullptr)
 	{
-		UCharacterMovementComponent* MovementComp = OverlappedCharacter->GetCharacterMovement();
-		if (MovementComp != nullptr)
+		if (UCharacterMovementComponent* MovementComp = OverlappedCharacter->GetCharacterMovement())
 		{
 			MovementComp->MaxWalkSpeed /= SpeedMultiplier;
 		}

@@ -139,6 +139,7 @@ void ABatItem::UseBatItem()
         UGameplayStatics::PlaySoundAtLocation(GetWorld(), SwingSound, GetActorLocation());
     }
 
+
     SwingHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     GetWorld()->GetTimerManager().SetTimer(

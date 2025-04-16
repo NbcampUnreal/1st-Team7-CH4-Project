@@ -6,6 +6,11 @@
 #include "GameFramework/Actor.h"
 #include "IceBombItem.generated.h"
 
+class USphereComponent;
+class UStaticMeshComponent;
+class UParticleSystem;
+class USoundBase;
+
 UCLASS()
 class THESEVEN_API AIceBombItem : public AActor
 {
@@ -17,7 +22,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-
 	UFUNCTION()
 	void OnOverlapBegin(
 		UPrimitiveComponent* OverlappedComponent,
@@ -25,16 +29,22 @@ protected:
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex,
 		bool bFromSweep,
-		const FHitResult& SweepResult);
+		const FHitResult& SweepResult
+	);
 
 public:
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ice Bomb")
 	float FreezeDuration = 3.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class USphereComponent* CollisionSphere;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ice Bomb")
+	USphereComponent* CollisionSphere;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class UStaticMeshComponent* MeshComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ice Bomb")
+	UStaticMeshComponent* MeshComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+	UParticleSystem* IceEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+	USoundBase* IceSound;
 };
