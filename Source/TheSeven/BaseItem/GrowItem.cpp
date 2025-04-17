@@ -22,6 +22,8 @@ AGrowItem::AGrowItem()
 
 	GrowEffect = nullptr;
 	GrowSound = nullptr;
+
+	ItemType = EItemType::Grow;
 }
 
 void AGrowItem::BeginPlay()
