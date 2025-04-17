@@ -46,13 +46,20 @@ void ABatItem::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
     bool bFromSweep, const FHitResult& SweepResult)
 {
     if (!OtherActor || OtherActor == this)
-    {
         return;
-    }
 
     ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
     if (PlayerChar)
     {
+      
+        TArray<AActor*> AttachedActors;
+        PlayerChar->GetAttachedActors(AttachedActors);
+        for (AActor* Attached : AttachedActors)
+        {
+            if (Attached && Attached->IsA(ABatItem::StaticClass()))
+                return;  
+        }
+
         UE_LOG(LogTemp, Warning, TEXT("Bat item picked up by %s"), *PlayerChar->GetName());
 
         SetOwner(PlayerChar);
@@ -76,9 +83,7 @@ void ABatItem::OnSwingHitOverlap(UPrimitiveComponent* OverlappedComp, AActor* Ot
     bool bFromSweep, const FHitResult& SweepResult)
 {
     if (!OtherActor || OtherActor == this)
-    {
         return;
-    }
 
     if (OtherActor == GetOwner())
     {
@@ -111,8 +116,8 @@ void ABatItem::UseBatItem()
             SwingEffect,
             GetActorLocation(),
             FRotator::ZeroRotator,
-            FVector(1.f), 
-            true 
+            FVector(1.f),
+            true
         );
 
         if (PSC)
@@ -138,7 +143,6 @@ void ABatItem::UseBatItem()
     {
         UGameplayStatics::PlaySoundAtLocation(GetWorld(), SwingSound, GetActorLocation());
     }
-
 
     SwingHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 

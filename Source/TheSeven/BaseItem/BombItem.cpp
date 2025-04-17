@@ -19,7 +19,6 @@ ABombItem::ABombItem()
     MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     MeshComponent->SetupAttachment(RootComponent);
     MeshComponent->SetSimulatePhysics(false);
-    // 캐릭터와 부딪쳐 튕기지 않도록
     MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
     BombCollision = CreateDefaultSubobject<USphereComponent>(TEXT("BombCollision"));
@@ -39,6 +38,7 @@ ABombItem::ABombItem()
 void ABombItem::BeginPlay()
 {
     Super::BeginPlay();
+
     PickupCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnPickupOverlap);
     BombCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnBombOverlap);
     BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -54,6 +54,15 @@ void ABombItem::OnPickupOverlap(UPrimitiveComponent* OverlappedComp, AActor* Oth
     ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
     if (!PlayerChar)
         return;
+
+    
+    TArray<AActor*> AttachedActors;
+    PlayerChar->GetAttachedActors(AttachedActors);
+    for (AActor* Attached : AttachedActors)
+    {
+        if (Attached && Attached->IsA(ABombItem::StaticClass()))
+            return;
+    }
 
     bIsPickedUp = true;
     SetOwner(PlayerChar);
@@ -86,9 +95,7 @@ void ABombItem::OnBombOverlap(UPrimitiveComponent* OverlappedComp, AActor* Other
         return;
 
     if (Cast<ACharacter>(OtherActor))
-    {
         Explode();
-    }
 }
 
 void ABombItem::ThrowBomb()
@@ -104,7 +111,6 @@ void ABombItem::ThrowBomb()
 
     MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     MeshComponent->SetSimulatePhysics(true);
-    // 던진 후에도 캐릭터와 충돌하지 않도록 계속 무시
     MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
     FVector ThrowDir = FVector::ZeroVector;
@@ -119,11 +125,16 @@ void ABombItem::ThrowBomb()
     BombCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     FTimerHandle StopIgnoreHandle;
-    GetWorld()->GetTimerManager().SetTimer(StopIgnoreHandle, [this]()
+    GetWorld()->GetTimerManager().SetTimer(
+        StopIgnoreHandle,
+        [this]()
         {
             if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
                 BombCollision->IgnoreActorWhenMoving(OwnerChar, false);
-        }, 0.5f, false);
+        },
+        0.5f,
+        false
+    );
 }
 
 void ABombItem::Explode()
