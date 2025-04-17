@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "BaseItem.h"
 #include "InkItem.generated.h"
 
 class USphereComponent;
@@ -12,7 +12,7 @@ class UParticleSystem;
 class USoundBase;
 
 UCLASS()
-class THESEVEN_API AInkItem : public AActor
+class THESEVEN_API AInkItem : public ABaseItem
 {
     GENERATED_BODY()
 
