@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "BaseItem.h"
 #include "IceBombItem.generated.h"
 
 class USphereComponent;
@@ -11,7 +11,7 @@ class UParticleSystem;
 class USoundBase;
 
 UCLASS()
-class THESEVEN_API AIceBombItem : public AActor
+class THESEVEN_API AIceBombItem : public ABaseItem
 {
 	GENERATED_BODY()
 

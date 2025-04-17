@@ -28,6 +28,8 @@ ASpeedItem::ASpeedItem()
 
 	SpeedEffect = nullptr;
 	SpeedSound = nullptr;
+
+	ItemType = EItemType::Speed;
 }
 
 void ASpeedItem::HandleOverlapBegin(

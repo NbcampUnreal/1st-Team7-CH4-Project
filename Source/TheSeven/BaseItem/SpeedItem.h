@@ -2,11 +2,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "BaseItem.h"
 #include "SpeedItem.generated.h"
 
 UCLASS()
-class THESEVEN_API ASpeedItem : public AActor
+class THESEVEN_API ASpeedItem : public ABaseItem
 {
 	GENERATED_BODY()
 
