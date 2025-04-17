@@ -1,94 +1,154 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "BombItem.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
+#include "GameFramework/PlayerController.h"
 
 ABombItem::ABombItem()
 {
-	PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = false;
 
+    PickupCollision = CreateDefaultSubobject<USphereComponent>(TEXT("PickupCollision"));
+    PickupCollision->InitSphereRadius(30.f);
+    PickupCollision->SetCollisionProfileName(TEXT("OverlapAll"));
+    RootComponent = PickupCollision;
 
-	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	CollisionSphere->InitSphereRadius(30.0f);
-	CollisionSphere->SetCollisionProfileName(TEXT("OverlapAll"));
-	RootComponent = CollisionSphere;
+    MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+    MeshComponent->SetupAttachment(RootComponent);
+    MeshComponent->SetSimulatePhysics(false);
+    // 캐릭터와 부딪쳐 튕기지 않도록
+    MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
+    BombCollision = CreateDefaultSubobject<USphereComponent>(TEXT("BombCollision"));
+    BombCollision->InitSphereRadius(30.f);
+    BombCollision->SetCollisionProfileName(TEXT("OverlapAll"));
+    BombCollision->SetupAttachment(RootComponent);
 
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	MeshComponent->SetupAttachment(RootComponent);
+    ExplosionRadius = 300.f;
+    Damage = 30.f;
+    bIsPickedUp = false;
+    bIsThrown = false;
 
-
-	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnOverlapBegin);
-
-	ExplosionRadius = 300.f;
-	Damage = 30.f;
+    ExplosionEffect = nullptr;
+    ExplosionSound = nullptr;
 }
 
 void ABombItem::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
+    PickupCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnPickupOverlap);
+    BombCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnBombOverlap);
+    BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void ABombItem::OnOverlapBegin(
-	UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult
-)
+void ABombItem::OnPickupOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+    bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (OtherActor == GetOwner() || !OtherActor || OtherActor == this || bIsPickedUp)
+        return;
 
-	if (!OtherActor)
-	{
-		return;
-	}
+    ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
+    if (!PlayerChar)
+        return;
 
+    bIsPickedUp = true;
+    SetOwner(PlayerChar);
 
-	ACharacter* OverlappedCharacter = Cast<ACharacter>(OtherActor);
-	if (OverlappedCharacter)
-	{
-		Explode();
-	}
+    if (USkeletalMeshComponent* PlayerMesh = PlayerChar->GetMesh())
+    {
+        FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
+        AttachToComponent(PlayerMesh, Rules, FName("hand_l"));
+    }
+
+    PickupCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    PickupCollision->SetGenerateOverlapEvents(false);
+    BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MeshComponent->SetSimulatePhysics(false);
+
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        EnableInput(PC);
+        if (InputComponent)
+            InputComponent->BindAction("ThrowBomb", IE_Pressed, this, &ABombItem::ThrowBomb);
+    }
+}
+
+void ABombItem::OnBombOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+    bool bFromSweep, const FHitResult& SweepResult)
+{
+    if (OtherActor == GetOwner() || !OtherActor || OtherActor == this || !bIsThrown)
+        return;
+
+    if (Cast<ACharacter>(OtherActor))
+    {
+        Explode();
+    }
+}
+
+void ABombItem::ThrowBomb()
+{
+    if (!bIsPickedUp || bIsThrown)
+        return;
+
+    bIsThrown = true;
+    DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+    if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+        BombCollision->IgnoreActorWhenMoving(OwnerChar, true);
+
+    MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    MeshComponent->SetSimulatePhysics(true);
+    // 던진 후에도 캐릭터와 충돌하지 않도록 계속 무시
+    MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+    FVector ThrowDir = FVector::ZeroVector;
+    if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+    {
+        ThrowDir = OwnerChar->GetActorForwardVector() + FVector(0.f, 0.f, 0.2f);
+        ThrowDir.Normalize();
+    }
+    MeshComponent->SetPhysicsLinearVelocity(ThrowDir * 1500.f);
+
+    BombCollision->SetGenerateOverlapEvents(true);
+    BombCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+    FTimerHandle StopIgnoreHandle;
+    GetWorld()->GetTimerManager().SetTimer(StopIgnoreHandle, [this]()
+        {
+            if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+                BombCollision->IgnoreActorWhenMoving(OwnerChar, false);
+        }, 0.5f, false);
 }
 
 void ABombItem::Explode()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Bomb exploded via overlap."));
+    if (ExplosionEffect)
+        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
+    if (ExplosionSound)
+        UGameplayStatics::PlaySoundAtLocation(GetWorld(), ExplosionSound, GetActorLocation());
 
-
-	ApplyDamage();
-
-	Destroy();
+    ApplyDamage();
+    Destroy();
 }
 
 void ABombItem::ApplyDamage()
 {
-	TArray<AActor*> OverlappingActors;
+    TArray<AActor*> Overlapping;
+    BombCollision->GetOverlappingActors(Overlapping, ACharacter::StaticClass());
 
-	CollisionSphere->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
+    for (AActor* Actor : Overlapping)
+    {
+        ACharacter* Char = Cast<ACharacter>(Actor);
+        if (!Char || Char == GetOwner())
+            continue;
 
-	for (AActor* Actor : OverlappingActors)
-	{
-		ACharacter* Char = Cast<ACharacter>(Actor);
-		if (Char)
-		{
-
-			float Distance = FVector::Dist(GetActorLocation(), Char->GetActorLocation());
-			if (Distance <= ExplosionRadius)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Applying %.1f damage to %s"), Damage, *Char->GetName());
-				UGameplayStatics::ApplyDamage(
-					Char,
-					Damage,
-					GetInstigatorController(),
-					this,
-					nullptr
-				);
-			}
-		}
-	}
+        if (FVector::Dist(GetActorLocation(), Char->GetActorLocation()) <= ExplosionRadius)
+            UGameplayStatics::ApplyDamage(Char, Damage, GetInstigatorController(), this, nullptr);
+    }
 }
