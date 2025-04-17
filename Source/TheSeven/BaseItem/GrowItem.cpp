@@ -1,12 +1,12 @@
-
-
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "GrowItem.h"
-
 #include "GameFramework/Character.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 AGrowItem::AGrowItem()
 {
@@ -19,12 +19,14 @@ AGrowItem::AGrowItem()
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
+
+	GrowEffect = nullptr;
+	GrowSound = nullptr;
 }
 
 void AGrowItem::BeginPlay()
 {
 	Super::BeginPlay();
-
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AGrowItem::OnOverlapBegin);
 }
 
@@ -40,9 +42,17 @@ void AGrowItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor*
 	const FVector OriginalScale = Character->GetActorScale3D();
 
 
+	if (GrowEffect)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), GrowEffect, Character->GetActorLocation(), FRotator::ZeroRotator, FVector(1.f), true);
+	}
+	if (GrowSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), GrowSound, Character->GetActorLocation());
+	}
+
 	Character->SetActorScale3D(OriginalScale * GrowthScale);
 	UE_LOG(LogTemp, Warning, TEXT("%s has grown!"), *Character->GetName());
-
 
 	FTimerHandle ResetTimerHandle;
 	FTimerDelegate TimerDelegate;
@@ -59,4 +69,3 @@ void AGrowItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor*
 
 	Destroy();
 }
-
