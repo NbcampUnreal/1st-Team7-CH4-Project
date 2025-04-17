@@ -61,7 +61,6 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
     UStaticMeshComponent* MeshComponent;
 
-    // 던진 후 적과 충돌 감지용 Collision Sphere
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
     USphereComponent* BombCollision;
 
@@ -71,11 +70,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bomb")
     float Damage;
 
-    // 폭탄을 플레이어가 주웠는지 여부
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bomb")
     bool bIsPickedUp;
 
-    // 폭탄이 이미 던져졌는지 여부 (중복 폭발 방지)
     bool bIsThrown;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")

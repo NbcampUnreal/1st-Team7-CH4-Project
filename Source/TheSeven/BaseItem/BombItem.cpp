@@ -19,6 +19,8 @@ ABombItem::ABombItem()
     MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     MeshComponent->SetupAttachment(RootComponent);
     MeshComponent->SetSimulatePhysics(false);
+    // 캐릭터와 부딪쳐 튕기지 않도록
+    MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
     BombCollision = CreateDefaultSubobject<USphereComponent>(TEXT("BombCollision"));
     BombCollision->InitSphereRadius(30.f);
@@ -37,7 +39,6 @@ ABombItem::ABombItem()
 void ABombItem::BeginPlay()
 {
     Super::BeginPlay();
-
     PickupCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnPickupOverlap);
     BombCollision->OnComponentBeginOverlap.AddDynamic(this, &ABombItem::OnBombOverlap);
     BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -47,35 +48,33 @@ void ABombItem::OnPickupOverlap(UPrimitiveComponent* OverlappedComp, AActor* Oth
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
     bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!OtherActor || OtherActor == this || bIsPickedUp)
+    if (OtherActor == GetOwner() || !OtherActor || OtherActor == this || bIsPickedUp)
         return;
 
     ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
-    if (PlayerChar)
+    if (!PlayerChar)
+        return;
+
+    bIsPickedUp = true;
+    SetOwner(PlayerChar);
+
+    if (USkeletalMeshComponent* PlayerMesh = PlayerChar->GetMesh())
     {
-        bIsPickedUp = true;
-        SetOwner(PlayerChar);
+        FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
+        AttachToComponent(PlayerMesh, Rules, FName("hand_l"));
+    }
 
-        if (USkeletalMeshComponent* PlayerMesh = PlayerChar->GetMesh())
-        {
-            FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
-            AttachToComponent(PlayerMesh, Rules, FName("hand_r"));
-        }
+    PickupCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    PickupCollision->SetGenerateOverlapEvents(false);
+    BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MeshComponent->SetSimulatePhysics(false);
 
-        PickupCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        PickupCollision->SetGenerateOverlapEvents(false);
-        BombCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        MeshComponent->SetSimulatePhysics(false);
-
-        if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
-        {
-            EnableInput(PC);
-            if (InputComponent)
-            {
-                InputComponent->BindAction("ThrowBomb", IE_Pressed, this, &ABombItem::ThrowBomb);
-            }
-        }
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        EnableInput(PC);
+        if (InputComponent)
+            InputComponent->BindAction("ThrowBomb", IE_Pressed, this, &ABombItem::ThrowBomb);
     }
 }
 
@@ -83,7 +82,7 @@ void ABombItem::OnBombOverlap(UPrimitiveComponent* OverlappedComp, AActor* Other
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
     bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!OtherActor || OtherActor == this || !bIsThrown)
+    if (OtherActor == GetOwner() || !OtherActor || OtherActor == this || !bIsThrown)
         return;
 
     if (Cast<ACharacter>(OtherActor))
@@ -105,36 +104,32 @@ void ABombItem::ThrowBomb()
 
     MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     MeshComponent->SetSimulatePhysics(true);
+    // 던진 후에도 캐릭터와 충돌하지 않도록 계속 무시
+    MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
     FVector ThrowDir = FVector::ZeroVector;
     if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
     {
-        ThrowDir = OwnerChar->GetActorForwardVector();
-        ThrowDir += FVector(0.f, 0.f, 0.2f);
+        ThrowDir = OwnerChar->GetActorForwardVector() + FVector(0.f, 0.f, 0.2f);
+        ThrowDir.Normalize();
     }
-    ThrowDir.Normalize();
-
     MeshComponent->SetPhysicsLinearVelocity(ThrowDir * 1500.f);
 
-    FTimerHandle EnableCollisionHandle;
-    GetWorld()->GetTimerManager().SetTimer(EnableCollisionHandle, [this]()
-        {
-            BombCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-        }, 0.1f, false);
+    BombCollision->SetGenerateOverlapEvents(true);
+    BombCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
     FTimerHandle StopIgnoreHandle;
     GetWorld()->GetTimerManager().SetTimer(StopIgnoreHandle, [this]()
         {
             if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
                 BombCollision->IgnoreActorWhenMoving(OwnerChar, false);
-        }, 0.3f, false);
+        }, 0.5f, false);
 }
 
 void ABombItem::Explode()
 {
     if (ExplosionEffect)
         UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation());
-
     if (ExplosionSound)
         UGameplayStatics::PlaySoundAtLocation(GetWorld(), ExplosionSound, GetActorLocation());
 
@@ -144,14 +139,16 @@ void ABombItem::Explode()
 
 void ABombItem::ApplyDamage()
 {
-    TArray<AActor*> OverlappingActors;
-    BombCollision->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
-    for (AActor* Actor : OverlappingActors)
+    TArray<AActor*> Overlapping;
+    BombCollision->GetOverlappingActors(Overlapping, ACharacter::StaticClass());
+
+    for (AActor* Actor : Overlapping)
     {
         ACharacter* Char = Cast<ACharacter>(Actor);
-        if (Char && FVector::Dist(GetActorLocation(), Char->GetActorLocation()) <= ExplosionRadius)
-        {
+        if (!Char || Char == GetOwner())
+            continue;
+
+        if (FVector::Dist(GetActorLocation(), Char->GetActorLocation()) <= ExplosionRadius)
             UGameplayStatics::ApplyDamage(Char, Damage, GetInstigatorController(), this, nullptr);
-        }
     }
 }
