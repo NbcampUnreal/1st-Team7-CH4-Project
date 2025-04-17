@@ -41,7 +41,6 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     USphereComponent* PickupCollision;
 
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     USphereComponent* SwingHitBox;
 
@@ -60,7 +59,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
     USoundBase* SwingSound;
 
+private:
     FTimerHandle SwingTimerHandle;
-
     FTimerHandle EffectTimerHandle;
 };
