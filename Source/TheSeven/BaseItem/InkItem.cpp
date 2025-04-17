@@ -22,6 +22,8 @@ AInkItem::AInkItem()
 
     InkEffect = nullptr;
     InkSound = nullptr;
+
+    ItemType = EItemType::Ink;
 }
 
 void AInkItem::BeginPlay()

@@ -33,6 +33,8 @@ ABombItem::ABombItem()
 
     ExplosionEffect = nullptr;
     ExplosionSound = nullptr;
+
+    ItemType = EItemType::Bomb;
 }
 
 void ABombItem::BeginPlay()

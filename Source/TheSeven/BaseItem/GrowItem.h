@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "BaseItem.h"
 #include "GrowItem.generated.h"
 
 class USphereComponent;
@@ -12,7 +12,7 @@ class UParticleSystem;
 class USoundBase;
 
 UCLASS()
-class THESEVEN_API AGrowItem : public AActor
+class THESEVEN_API AGrowItem : public ABaseItem
 {
 	GENERATED_BODY()
 public:

@@ -31,6 +31,8 @@ ABatItem::ABatItem()
 
     SwingEffect = nullptr;
     SwingSound = nullptr;
+
+    ItemType = EItemType::Bat;
 }
 
 void ABatItem::BeginPlay()
