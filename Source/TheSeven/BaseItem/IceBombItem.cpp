@@ -35,6 +35,8 @@ AIceBombItem::AIceBombItem()
 
 	bIsPickedUp = false;
 	bIsThrown = false;
+
+	ItemType = EItemType::IceBomb;
 }
 
 void AIceBombItem::BeginPlay()

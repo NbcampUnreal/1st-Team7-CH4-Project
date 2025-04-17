@@ -6,6 +6,17 @@
 #include "GameFramework/Actor.h"
 #include "BaseItem.generated.h"
 
+UENUM(BlueprintType)
+enum class EItemType : uint8
+{
+	Bomb	UMETA(DisplayName = "Bomb"),
+	IceBomb UMETA(DisplayName = "IceBomb"),
+	Bat		UMETA(DisplayName = "Bat"),
+	Grow	UMETA(DisplayName = "Grow"),
+	Ink		UMETA(DisplayName = "Ink"),
+	Speed	UMETA(DisplayName = "Speed")
+};
+
 UCLASS()
 class THESEVEN_API ABaseItem : public AActor
 {
@@ -23,6 +34,6 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EItemType ItemType;
 };

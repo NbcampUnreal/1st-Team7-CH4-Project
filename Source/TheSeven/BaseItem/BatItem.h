@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "BaseItem.h"
 #include "BatItem.generated.h"
 
 class USphereComponent;
@@ -11,7 +11,7 @@ class USoundBase;
 class ACharacter;
 
 UCLASS()
-class ABatItem : public AActor
+class ABatItem : public ABaseItem
 {
     GENERATED_BODY()
 
